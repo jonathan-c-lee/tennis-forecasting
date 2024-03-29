@@ -95,12 +95,12 @@ class TrackNet(nn.Module):
         Returns:
             Ball center coordinates.
         """
-        heatmap = np.squeeze(heatmap.numpy())
+        heatmap = np.squeeze(heatmap.detach().numpy())
         if np.max(heatmap) < cls._score_threshold: return (-1, -1)
 
         _, binary_map = cv2.threshold(heatmap, cls._score_threshold, 1, cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(binary_map.astype('uint8'), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         contour = max(contours, key=cv2.contourArea)
-        moment = cv2.moments(contour)
-        center = (int(moment['m10'] // moment['m00']), int(moment['m01'] // moment['m00']))
+        x, y, w, h = cv2.boundingRect(contour)
+        center = (int(x + w/2), int(y + h/2))
         return center
