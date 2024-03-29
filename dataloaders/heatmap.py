@@ -18,10 +18,10 @@ def generate_heatmap(
     Generate binary heatmap.
     
     Args:
-        shape (Tuple[int, int]): output heatmap shape as height, width
-        center (Tuple[int, int]): ball center in image coordinates as x, y (zero-indexed)
-        radius (int): radius of generated circle
-        type (np.dtype): heatmap datatype (defaults to np.float32)
+        shape (Tuple[int, int]): Output heatmap shape as height, width.
+        center (Tuple[int, int]): Ball center in image coordinates as x, y (zero-indexed).
+        radius (int): Radius of generated circle.
+        type (np.dtype): Heatmap datatype (defaults to np.float32).
 
     Returns:
         Binary heatmap for ball.
@@ -39,4 +39,5 @@ def generate_heatmap(
 
 
 if __name__ == '__main__':
+    # testing the generate_heatmap function
     print(generate_heatmap(shape=(5, 7), center=(3, 2)))

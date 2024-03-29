@@ -75,7 +75,7 @@ class ResBlock(nn.Module):
         """
         super().__init__()
 
-        self._short_cut = lambda x: x
+        self._short_cut = nn.Identity()
         conv2 = nn.Conv2d(in_channels, in_channels, kernel_size=3, padding=1)
         if type is ResBlockType.DOWNSAMPLER:
             self._short_cut = nn.Sequential(
@@ -127,10 +127,6 @@ class ResBlock(nn.Module):
         x1 = self._conv1(x)
         x2 = self._conv2(x1)
         x3 = self._conv3(x2)
-        # print('x1', x1.size())
-        # print('x2', x2.size())
-        # print('x3', x3.size())
-        # print(short_cut.size())
         out = x3 + short_cut
         return out
 

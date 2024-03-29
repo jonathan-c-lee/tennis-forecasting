@@ -7,6 +7,8 @@ Attention architecture from https://arxiv.org/abs/1804.03999.
 Res-UNet architecture from https://github.com/Chang-Chia-Chi/TrackNet-Badminton-Tracking-tensorflow2.
 """
 from typing import List
+import numpy as np
+import cv2
 import torch
 import torch.nn as nn
 
@@ -23,6 +25,8 @@ class TrackNet(nn.Module):
         https://github.com/nttcom/WASB-SBDT
         https://github.com/sfczekalski/attention_unet
     """
+    _score_threshold = 0.5
+
     def __init__(
             self,
             in_channels: int,
@@ -42,16 +46,14 @@ class TrackNet(nn.Module):
         """
         super().__init__()
 
-        if len(blocks) < 4 or len(channels) < 4:
-            raise ValueError('There must be at least 4 blocks and 4 channels')
+        if len(blocks) != 4 or len(channels) != 4:
+            raise ValueError('There must be 4 blocks and 4 channels')
 
         self._conv_in = InputConvBlock(in_channels, neck_channels)
         self._down1 = DownStack(neck_channels, channels[0], blocks[0])
         self._down2 = DownStack(channels[0], channels[1], blocks[1])
         self._down3 = DownStack(channels[1], channels[2], blocks[2])
         self._down4 = DownStack(channels[2], channels[3], blocks[3])
-
-        
 
         self._up1 = UpStack(channels[3], channels[2], channels[2], blocks[2])
         self._up2 = UpStack(channels[2], channels[1], channels[1], blocks[1])
@@ -81,3 +83,24 @@ class TrackNet(nn.Module):
         x9 = self._up4(x8)
         out = self._conv_out(x9)
         return out
+    
+    @classmethod
+    def detect_ball(cls, heatmap: torch.Tensor):
+        """
+        Detect ball in heatmap.
+
+        Args:
+            heatmap (torch.Tensor): Raw heatmap.
+        
+        Returns:
+            Ball center coordinates.
+        """
+        heatmap = np.squeeze(heatmap.numpy())
+        if np.max(heatmap) < cls._score_threshold: return (-1, -1)
+
+        _, binary_map = cv2.threshold(heatmap, cls._score_threshold, 1, cv2.THRESH_BINARY)
+        contours, _ = cv2.findContours(binary_map.astype('uint8'), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contour = max(contours, key=cv2.contourArea)
+        moment = cv2.moments(contour)
+        center = (int(moment['m10'] // moment['m00']), int(moment['m01'] // moment['m00']))
+        return center

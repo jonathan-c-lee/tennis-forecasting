@@ -1,26 +1,29 @@
 """Main script."""
 import os
 from tqdm import tqdm
+import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from torch.optim import Adam
-from losses.focal_loss import BinaryFocalLoss
 from torchvision.io import ImageReadMode
 
 from dataloaders.datasets import TrackNetDataset
 from models.tracknet import TrackNet
+from losses.focal_loss import BinaryFocalLoss
 
 
 # TODO: Move training to a trainer class
 if __name__ == '__main__':
+    dirname = os.path.dirname(__file__)
+
     input_size = 3
     output_size = 1
 
     model = TrackNet(input_size, output_size)
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    # model.load_state_dict(torch.load(os.path.join(dirname, './weights/small_tracknet.pt'), map_location=torch.device(device)))
     model.to(device)
 
-    dirname = os.path.dirname(__file__)
     path = os.path.join(dirname, './data/game1/Clip1')
     dataset = TrackNetDataset(
         path,
@@ -29,7 +32,7 @@ if __name__ == '__main__':
         output_size=output_size,
         mode=ImageReadMode.GRAY
     )
-    dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=8, shuffle=True)
 
     loss_criterion = BinaryFocalLoss()
     optimizer = Adam(model.parameters(), lr=1e-3)
@@ -55,3 +58,8 @@ if __name__ == '__main__':
     print(train_loss)
 
     torch.save(model.state_dict(), os.path.join(dirname, './weights/small_tracknet.pt'))
+
+    # model.eval()
+    # # pred = model(dataset[0][0])
+    # print(np.where(dataset[0][1].numpy() == 1))
+    # print(model.detect_ball(dataset[0][1]))

@@ -15,7 +15,7 @@ class BinaryFocalLoss(nn.Module):
         Binary focal loss initializer.
 
         Args:
-            gamma (float): gamma coefficient for focal loss
+            gamma (float): Gamma coefficient for focal loss.
         """
         super().__init__()
         self._gamma = gamma
@@ -31,6 +31,7 @@ class BinaryFocalLoss(nn.Module):
         Returns:
             Binary focal loss.
         """
-        loss = targets * (1 - inputs)**self._gamma * torch.log(inputs) + (1 - targets) * inputs**self._gamma * torch.log(1 - inputs)
+        loss = (targets * (1 - inputs)**self._gamma * torch.log(inputs) +
+                (1 - targets) * inputs**self._gamma * torch.log(1 - inputs))
         loss = torch.mean(-loss)
         return loss
