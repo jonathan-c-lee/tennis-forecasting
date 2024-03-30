@@ -171,8 +171,8 @@ if __name__ == '__main__':
             model.load_state_dict(torch.load(os.path.join(dirname, f'./weights/{model_name}.pt'), map_location=torch.device(device)))
             model.to(device)
 
-            train_statistics, train_scores = evaluate_tracknet(model, train_set)
-            test_statistics, test_scores = evaluate_tracknet(model, test_set)
+            train_statistics, train_scores = evaluate_tracknet(model, train_set, device)
+            test_statistics, test_scores = evaluate_tracknet(model, test_set, device)
             print(model_name)
             print('Train Performance')
             print(train_statistics)

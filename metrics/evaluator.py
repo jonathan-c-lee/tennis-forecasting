@@ -1,4 +1,5 @@
 """Model evaluation methods."""
+import torch
 from torch.utils.data import Dataset
 
 from models.tracknet import TrackNet
@@ -29,7 +30,7 @@ def get_scores(tp: int, tn: int, fp: int, fn: int):
     }
 
 
-def evaluate_tracknet(model: TrackNet, dataset: Dataset, threshold: int = 4):
+def evaluate_tracknet(model: TrackNet, dataset: Dataset, device: torch.device, threshold: int = 4):
     """
     Evaluate TrackNet model performance.
 
@@ -37,6 +38,7 @@ def evaluate_tracknet(model: TrackNet, dataset: Dataset, threshold: int = 4):
         model (TrackNet): TrackNet model to evaluate.
         dataset (Dataset): Dataset to use for evaluation.
         threshold (int): Threshold for true positive.
+        device (torch.device): Device that model is attached to.
 
     Returns:
         Raw statistics and performance scores.
@@ -45,6 +47,7 @@ def evaluate_tracknet(model: TrackNet, dataset: Dataset, threshold: int = 4):
 
     model.eval()
     for input, label in dataset:
+        input, label = input.to(device), label.to(device)
         output = model(input.unsqueeze(0))
         for i, heatmap in enumerate(output):
             prediction = model.detect_ball(heatmap)
