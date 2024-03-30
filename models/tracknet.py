@@ -7,12 +7,11 @@ Attention architecture from https://arxiv.org/abs/1804.03999.
 Res-UNet architecture from https://github.com/Chang-Chia-Chi/TrackNet-Badminton-Tracking-tensorflow2.
 """
 from typing import List
-import numpy as np
-import cv2
 import torch
 import torch.nn as nn
 
 from models.tracknet_modules import *
+from detectors.detector import detect_ball
 
 
 class TrackNet(nn.Module):
@@ -95,12 +94,4 @@ class TrackNet(nn.Module):
         Returns:
             Ball center coordinates.
         """
-        heatmap = np.squeeze(heatmap.detach().numpy())
-        if np.max(heatmap) < cls._score_threshold: return (-1, -1)
-
-        _, binary_map = cv2.threshold(heatmap, cls._score_threshold, 1, cv2.THRESH_BINARY)
-        contours, _ = cv2.findContours(binary_map.astype('uint8'), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        contour = max(contours, key=cv2.contourArea)
-        x, y, w, h = cv2.boundingRect(contour)
-        center = (int(x + w/2), int(y + h/2))
-        return center
+        return detect_ball(heatmap, cls._score_threshold)
