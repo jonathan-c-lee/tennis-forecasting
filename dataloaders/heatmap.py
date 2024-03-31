@@ -12,7 +12,7 @@ import numpy as np
 def generate_heatmap(
         shape: Tuple[int, int],
         center: Tuple[int, int],
-        radius: int = 1,
+        radius: int = 2,
         type: np.dtype = np.float32):
     """
     Generate binary heatmap.

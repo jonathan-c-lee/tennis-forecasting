@@ -15,7 +15,7 @@ def detect_ball(heatmap: torch.Tensor, threshold: float = 0.5):
         Returns:
             Ball center coordinates.
         """
-        heatmap = np.squeeze(heatmap.detach().numpy())
+        heatmap = np.squeeze(heatmap.detach().cpu().numpy())
         if np.max(heatmap) < threshold: return (-1, -1)
 
         _, binary_map = cv2.threshold(heatmap, threshold, 1, cv2.THRESH_BINARY)

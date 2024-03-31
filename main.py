@@ -24,6 +24,9 @@ if __name__ == '__main__':
     # input_size = 3
     # output_sizes = (1, 3)
     # modes = (ImageReadMode.GRAY, ImageReadMode.RGB)
+    # lr = 2e-3
+    # epochs = 30
+    # batch_size = 8
 
     # for output_size in output_sizes:
     #     for mode in modes:
@@ -37,8 +40,9 @@ if __name__ == '__main__':
     #             'mode': mode_name,
     #             'loss': 'focal loss',
     #             'optimizer': 'Adam',
-    #             'learning rate': 1e-3,
-    #             'epochs': 50,
+    #             'learning rate': lr,
+    #             'epochs': epochs,
+    #             'batch_size': batch_size,
     #             'weights_file': f'../weights/{model_name}.pt',
     #         }
 
@@ -54,20 +58,21 @@ if __name__ == '__main__':
     #             )
     #             datasets.append(dataset)
     #         train_set = torch.utils.data.ConcatDataset(datasets)
-    #         dataloader = DataLoader(train_set, batch_size=64, shuffle=True)
+    #         dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
 
-    #         model = TrackNet(input_size, output_size)
+    #         multiplier = 1 if mode == ImageReadMode.GRAY else 3
+    #         model = TrackNet(multiplier*input_size, output_size)
     #         device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
     #         model.to(device)
 
     #         loss_criterion = BinaryFocalLoss()
-    #         optimizer = Adam(model.parameters(), lr=1e-3)
+    #         optimizer = Adam(model.parameters(), lr=lr)
 
     #         model.train()
     #         train_loss = []
-    #         epochs = 50
     #         for epoch in tqdm(range(epochs)):
     #             running_loss = 0.0
+    #             count = 0
     #             for inputs, labels in dataloader:
     #                 inputs, labels = inputs.to(device), labels.to(device)
 
@@ -78,7 +83,8 @@ if __name__ == '__main__':
     #                 optimizer.step()
 
     #                 running_loss += loss.item()
-    #             train_loss.append(running_loss)
+    #                 count += 1
+    #             train_loss.append(running_loss / count)
 
     #         torch.save(model.state_dict(), os.path.join(dirname, f'./weights/{model_name}.pt'))
     #         with open(os.path.join(dirname, f'./configs/{model_name}.yaml'), 'w') as outfile:
@@ -152,6 +158,7 @@ if __name__ == '__main__':
                 )
                 train_datasets.append(dataset)
             train_set = torch.utils.data.ConcatDataset(train_datasets)
+            train_loader = DataLoader(train_set, batch_size=1, shuffle=False)
 
             test_datasets = []
             for i in range(10):
@@ -165,14 +172,17 @@ if __name__ == '__main__':
                 )
                 test_datasets.append(dataset)
             test_set = torch.utils.data.ConcatDataset(test_datasets)
+            test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 
-            model = TrackNet(input_size, output_size)
+            multiplier = 1 if mode == ImageReadMode.GRAY else 3
+            model = TrackNet(multiplier*input_size, output_size)
             device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
             model.load_state_dict(torch.load(os.path.join(dirname, f'./weights/{model_name}.pt'), map_location=torch.device(device)))
             model.to(device)
+            model.eval()
 
-            train_statistics, train_scores = evaluate_tracknet(model, train_set, device)
-            test_statistics, test_scores = evaluate_tracknet(model, test_set, device)
+            train_statistics, train_scores = evaluate_tracknet(model, train_loader, device)
+            test_statistics, test_scores = evaluate_tracknet(model, test_loader, device)
             print(model_name)
             print('Train Performance')
             print(train_statistics)

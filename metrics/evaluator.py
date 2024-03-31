@@ -1,6 +1,7 @@
 """Model evaluation methods."""
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from models.tracknet import TrackNet
 
@@ -19,9 +20,9 @@ def get_scores(tp: int, tn: int, fp: int, fn: int):
         Dictionary of scores including accuracy, precision, recall, and F1 score.
     """
     accuracy = (tp + tn) / (tp + tn + fp + fn)
-    precision = tp / (tp + fp)
-    recall = tp / (tp + fn)
-    f1_score = 2 * (precision * recall) / (precision + recall)
+    precision = tp / (tp + fp) if (tp + fp) != 0 else 0.0
+    recall = tp / (tp + fn) if (tp + fn) != 0 else 0.0
+    f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) != 0 else 0.0
     return {
         'accuracy': accuracy,
         'precision': precision,
@@ -30,13 +31,13 @@ def get_scores(tp: int, tn: int, fp: int, fn: int):
     }
 
 
-def evaluate_tracknet(model: TrackNet, dataset: Dataset, device: torch.device, threshold: int = 4):
+def evaluate_tracknet(model: TrackNet, dataloader: DataLoader, device: torch.device, threshold: int = 4):
     """
     Evaluate TrackNet model performance.
 
     Args:
         model (TrackNet): TrackNet model to evaluate.
-        dataset (Dataset): Dataset to use for evaluation.
+        dataloader (DataLoader): Dataloader to use for evaluation.
         threshold (int): Threshold for true positive.
         device (torch.device): Device that model is attached to.
 
@@ -46,9 +47,10 @@ def evaluate_tracknet(model: TrackNet, dataset: Dataset, device: torch.device, t
     tp, tn, fp, fn = 0, 0, 0, 0
 
     model.eval()
-    for input, label in dataset:
-        input, label = input.to(device), label.to(device)
-        output = model(input.unsqueeze(0))
+    for images, label in tqdm(dataloader):
+        images, label = images.to(device), label.to(device)
+        label = label.squeeze(dim=0)
+        output = model(images).squeeze(dim=0)
         for i, heatmap in enumerate(output):
             prediction = model.detect_ball(heatmap)
             actual = model.detect_ball(label[i])
