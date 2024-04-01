@@ -21,8 +21,8 @@ if __name__ == '__main__':
     """Training tuning models."""
     # dirname = os.path.dirname(__file__)
     # shape = (288, 512)
-    # input_size = 3
-    # output_sizes = (1, 3)
+    # input_size = 5
+    # output_sizes = (3, 5)
     # modes = (ImageReadMode.GRAY, ImageReadMode.RGB)
     # lr = 2e-3
     # epochs = 30
@@ -138,8 +138,8 @@ if __name__ == '__main__':
     dirname = os.path.dirname(__file__)
     shape = (288, 512)
     input_size = 3
-    output_sizes = (1, 3)
-    modes = (ImageReadMode.GRAY, ImageReadMode.RGB)
+    output_sizes = (3,)
+    modes = (ImageReadMode.RGB,)
 
     for output_size in output_sizes:
         for mode in modes:
