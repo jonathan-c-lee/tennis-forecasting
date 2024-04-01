@@ -86,8 +86,8 @@ class TrackNetDataset(Dataset):
             h_ratio, w_ratio = self._shape[0] / raw_shape[0], self._shape[1] / raw_shape[1]
             start = index + self._input_size - self._output_size
             centers = [
-                (int(h_ratio * self._annotations.iloc[start+i, 2]),
-                 int(w_ratio * self._annotations.iloc[start+i, 3]))
+                (int(w_ratio * self._annotations.iloc[start+i, 2]),
+                 int(h_ratio * self._annotations.iloc[start+i, 3]))
                 for i in range(self._output_size)
             ]
             labels = torch.stack(

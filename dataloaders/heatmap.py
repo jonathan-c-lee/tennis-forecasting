@@ -28,7 +28,7 @@ def generate_heatmap(
     """
     h, w = shape
     bx, by = center
-    if bx < 0 or by < 0:
+    if bx <= 0 or by <= 0:
         return np.zeros((h, w), dtype=type)
     
     x, y = np.meshgrid(np.linspace(1, w, num=w), np.linspace(1, h, num=h))
