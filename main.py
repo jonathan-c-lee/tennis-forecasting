@@ -18,12 +18,89 @@ from metrics.evaluator import evaluate_tracknet
 
 # TODO: Move training to a trainer class
 if __name__ == '__main__':
+    """Training different sized models."""
+    # dirname = os.path.dirname(__file__)
+    # shape = (288, 512)
+    # input_size = 5
+    # output_size = 5
+    # mode = ImageReadMode.RGB
+    # # channels = ([8, 16, 32, 64], [32, 64, 128, 256], [64, 128, 256, 512])
+    # # names = ('small', 'large', 'xlarge')
+    # channels = ([8, 16, 32, 64],)
+    # names = ('small',)
+    # lr = 2e-3
+    # epochs = 30
+    # batch_size = 8
+
+    # for name, channel in zip(names, channels):
+    #     mode_name = 'GRAY' if mode == ImageReadMode.GRAY else 'RGB'
+    #     model_name = f'tracknet{output_size}_{name}'
+    #     config = {
+    #         'name': model_name,
+    #         'shape_in': shape,
+    #         'frames_in': input_size,
+    #         'frames_out': output_size,
+    #         'mode': mode_name,
+    #         'channels': channel,
+    #         'loss': 'focal loss',
+    #         'optimizer': 'Adam',
+    #         'learning rate': lr,
+    #         'epochs': epochs,
+    #         'batch_size': batch_size,
+    #         'weights_file': f'../weights/{model_name}.pt',
+    #     }
+
+    #     datasets = []
+    #     for i in range(10):
+    #         data_path = os.path.join(dirname, f'./data/game{i+1}/Clip1')
+    #         dataset = TrackNetDataset(
+    #             data_path,
+    #             shape=shape,
+    #             input_size=input_size,
+    #             output_size=output_size,
+    #             mode=mode
+    #         )
+    #         datasets.append(dataset)
+    #     train_set = torch.utils.data.ConcatDataset(datasets)
+    #     dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+
+    #     multiplier = 1 if mode == ImageReadMode.GRAY else 3
+    #     model = TrackNet(multiplier*input_size, output_size, channels=channel)
+    #     device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    #     model.to(device)
+
+    #     loss_criterion = BinaryFocalLoss()
+    #     optimizer = Adam(model.parameters(), lr=lr)
+
+    #     model.train()
+    #     train_loss = []
+    #     for epoch in tqdm(range(epochs)):
+    #         running_loss = 0.0
+    #         count = 0
+    #         for inputs, labels in dataloader:
+    #             inputs, labels = inputs.to(device), labels.to(device)
+
+    #             optimizer.zero_grad()
+    #             outputs = model(inputs)
+    #             loss = loss_criterion(outputs, labels)
+    #             loss.backward()
+    #             optimizer.step()
+
+    #             running_loss += loss.item()
+    #             count += 1
+    #         train_loss.append(running_loss / count)
+
+    #     torch.save(model.state_dict(), os.path.join(dirname, f'./weights/{model_name}.pt'))
+    #     with open(os.path.join(dirname, f'./configs/{model_name}.yaml'), 'w') as outfile:
+    #         config['train loss'] = train_loss
+    #         yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
+
     """Training tuning models."""
     # dirname = os.path.dirname(__file__)
     # shape = (288, 512)
     # input_size = 5
-    # output_sizes = (3, 5)
-    # modes = (ImageReadMode.GRAY, ImageReadMode.RGB)
+    # output_sizes = (5,)
+    # modes = (ImageReadMode.RGB,)
     # lr = 2e-3
     # epochs = 30
     # batch_size = 8
@@ -135,58 +212,115 @@ if __name__ == '__main__':
     # exit()
 
     """Evaluating tuning models."""
+    # dirname = os.path.dirname(__file__)
+    # shape = (288, 512)
+    # input_size = 5
+    # output_sizes = (3, 5)
+    # modes = (ImageReadMode.GRAY, ImageReadMode.RGB)
+
+    # for output_size in output_sizes:
+    #     for mode in modes:
+    #         mode_name = 'GRAY' if mode == ImageReadMode.GRAY else 'RGB'
+    #         model_name = f'tracknet_tuning_{input_size}in_{output_size}out_{mode_name}'
+
+    #         train_datasets = []
+    #         for i in range(10):
+    #             data_path = os.path.join(dirname, f'./data/game{i+1}/Clip1')
+    #             dataset = TrackNetDataset(
+    #                 data_path,
+    #                 shape=shape,
+    #                 input_size=input_size,
+    #                 output_size=output_size,
+    #                 mode=mode
+    #             )
+    #             train_datasets.append(dataset)
+    #         train_set = torch.utils.data.ConcatDataset(train_datasets)
+    #         train_loader = DataLoader(train_set, batch_size=1, shuffle=False)
+
+    #         test_datasets = []
+    #         for i in range(10):
+    #             data_path = os.path.join(dirname, f'./data/game{i+1}/Clip2')
+    #             dataset = TrackNetDataset(
+    #                 data_path,
+    #                 shape=shape,
+    #                 input_size=input_size,
+    #                 output_size=output_size,
+    #                 mode=mode
+    #             )
+    #             test_datasets.append(dataset)
+    #         test_set = torch.utils.data.ConcatDataset(test_datasets)
+    #         test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
+
+    #         multiplier = 1 if mode == ImageReadMode.GRAY else 3
+    #         model = TrackNet(multiplier*input_size, output_size)
+    #         device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    #         model.load_state_dict(torch.load(os.path.join(dirname, f'./weights/{model_name}.pt'), map_location=torch.device(device)))
+    #         model.to(device)
+    #         model.eval()
+
+    #         train_statistics, train_scores = evaluate_tracknet(model, train_loader, device)
+    #         test_statistics, test_scores = evaluate_tracknet(model, test_loader, device)
+    #         print(model_name)
+    #         print('Train Performance')
+    #         print(train_statistics)
+    #         print(train_scores)
+    #         print('Test Performance')
+    #         print(test_statistics)
+    #         print(test_scores)
+
+    """Evaluating different sized models."""
     dirname = os.path.dirname(__file__)
     shape = (288, 512)
-    input_size = 3
-    output_sizes = (3,)
-    modes = (ImageReadMode.RGB,)
+    input_size = 5
+    output_size = 5
+    mode = ImageReadMode.RGB
+    channels = ([8, 16, 32, 64],)
+    names = ('small',)
 
-    for output_size in output_sizes:
-        for mode in modes:
-            mode_name = 'GRAY' if mode == ImageReadMode.GRAY else 'RGB'
-            model_name = f'tracknet_tuning_{input_size}in_{output_size}out_{mode_name}'
+    for name, channel in zip(names, channels):
+        model_name = f'tracknet{output_size}_{name}'
 
-            train_datasets = []
-            for i in range(10):
-                data_path = os.path.join(dirname, f'./data/game{i+1}/Clip1')
-                dataset = TrackNetDataset(
-                    data_path,
-                    shape=shape,
-                    input_size=input_size,
-                    output_size=output_size,
-                    mode=mode
-                )
-                train_datasets.append(dataset)
-            train_set = torch.utils.data.ConcatDataset(train_datasets)
-            train_loader = DataLoader(train_set, batch_size=1, shuffle=False)
+        train_datasets = []
+        for i in range(10):
+            data_path = os.path.join(dirname, f'./data/game{i+1}/Clip1')
+            dataset = TrackNetDataset(
+                data_path,
+                shape=shape,
+                input_size=input_size,
+                output_size=output_size,
+                mode=mode
+            )
+            train_datasets.append(dataset)
+        train_set = torch.utils.data.ConcatDataset(train_datasets)
+        train_loader = DataLoader(train_set, batch_size=1, shuffle=False)
 
-            test_datasets = []
-            for i in range(10):
-                data_path = os.path.join(dirname, f'./data/game{i+1}/Clip2')
-                dataset = TrackNetDataset(
-                    data_path,
-                    shape=shape,
-                    input_size=input_size,
-                    output_size=output_size,
-                    mode=mode
-                )
-                test_datasets.append(dataset)
-            test_set = torch.utils.data.ConcatDataset(test_datasets)
-            test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
+        test_datasets = []
+        for i in range(10):
+            data_path = os.path.join(dirname, f'./data/game{i+1}/Clip2')
+            dataset = TrackNetDataset(
+                data_path,
+                shape=shape,
+                input_size=input_size,
+                output_size=output_size,
+                mode=mode
+            )
+            test_datasets.append(dataset)
+        test_set = torch.utils.data.ConcatDataset(test_datasets)
+        test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 
-            multiplier = 1 if mode == ImageReadMode.GRAY else 3
-            model = TrackNet(multiplier*input_size, output_size)
-            device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
-            model.load_state_dict(torch.load(os.path.join(dirname, f'./weights/{model_name}.pt'), map_location=torch.device(device)))
-            model.to(device)
-            model.eval()
+        multiplier = 1 if mode == ImageReadMode.GRAY else 3
+        model = TrackNet(multiplier*input_size, output_size, channels=channel)
+        device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+        model.load_state_dict(torch.load(os.path.join(dirname, f'./weights/{model_name}.pt'), map_location=torch.device(device)))
+        model.to(device)
+        model.eval()
 
-            train_statistics, train_scores = evaluate_tracknet(model, train_loader, device)
-            test_statistics, test_scores = evaluate_tracknet(model, test_loader, device)
-            print(model_name)
-            print('Train Performance')
-            print(train_statistics)
-            print(train_scores)
-            print('Test Performance')
-            print(test_statistics)
-            print(test_scores)
+        train_statistics, train_scores = evaluate_tracknet(model, train_loader, device)
+        test_statistics, test_scores = evaluate_tracknet(model, test_loader, device)
+        print(model_name)
+        print('Train Performance')
+        print(train_statistics)
+        print(train_scores)
+        print('Test Performance')
+        print(test_statistics)
+        print(test_scores)
