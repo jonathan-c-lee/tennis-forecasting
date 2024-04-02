@@ -24,10 +24,10 @@ if __name__ == '__main__':
     # input_size = 5
     # output_size = 5
     # mode = ImageReadMode.RGB
-    # # channels = ([8, 16, 32, 64], [32, 64, 128, 256], [64, 128, 256, 512])
-    # # names = ('small', 'large', 'xlarge')
-    # channels = ([8, 16, 32, 64],)
-    # names = ('small',)
+    # # channels = ([8, 16, 32, 64], [32, 64, 128, 256])
+    # # names = ('small', 'large')
+    # channels = ([32, 64, 128, 256],)
+    # names = ('large',)
     # lr = 2e-3
     # epochs = 30
     # batch_size = 8
@@ -274,8 +274,8 @@ if __name__ == '__main__':
     input_size = 5
     output_size = 5
     mode = ImageReadMode.RGB
-    channels = ([8, 16, 32, 64],)
-    names = ('small',)
+    channels = ([8, 16, 32, 64], [16, 32, 64, 128], [32, 64, 128, 256])
+    names = ('small', 'medium', 'large')
 
     for name, channel in zip(names, channels):
         model_name = f'tracknet{output_size}_{name}'
