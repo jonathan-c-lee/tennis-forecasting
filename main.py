@@ -9,6 +9,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torchvision.io import ImageReadMode
+from torchvision.transforms import v2
 
 from dataloaders.datasets import TrackNetDataset
 from models.tracknet import TrackNet
@@ -257,47 +258,62 @@ if __name__ == '__main__':
     #             yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
 
     """Creating video."""
-    # dirname = os.path.dirname(__file__)
+    dirname = os.path.dirname(__file__)
+    model_name = 'tracknet'
+    config = None
+    with open(os.path.join(dirname, f'./configs/{model_name}.yaml'), 'r') as file:
+        config = yaml.full_load(file)
+    
+    input_size = config['frames_in']
+    output_size = config['frames_out']
+    shape = config['shape_in']
+    mode = ImageReadMode.RGB if config['mode'] == 'RGB' else ImageReadMode.GRAY
+    multiplier = 3 if config['mode'] == 'RGB' else 1
+    channels = config['channels']
 
-    # input_size = 3
-    # output_size = 1
-    # shape = (288, 512)
+    model = TrackNet(multiplier*input_size, output_size, channels=channels)
+    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    model.load_state_dict(torch.load(os.path.join(dirname, f'./weights/{model_name}.pt'), map_location=torch.device(device)))
+    model.to(device)
 
-    # model = TrackNet(input_size, output_size)
-    # device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
-    # model.load_state_dict(torch.load(os.path.join(dirname, './weights/small_tracknet.pt'), map_location=torch.device(device)))
-    # model.to(device)
+    video_in = cv2.VideoCapture(os.path.join(dirname, f'./videos/test/test.mp4'))
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    video_out = cv2.VideoWriter(os.path.join(dirname, './videos/test/test_out.mp4'), fourcc, 30, (1280, 720))
 
-    # path = os.path.join(dirname, './data/game1/Clip1')
-    # dataset = TrackNetDataset(
-    #     path,
-    #     shape=shape,
-    #     input_size=input_size,
-    #     output_size=output_size,
-    #     mode=ImageReadMode.GRAY
-    # )
+    transform = v2.Compose([
+        v2.ToDtype(torch.float32, scale=True),
+        v2.Resize(shape)
+    ])
 
-    # image_names = pd.read_csv(f'{path}/Label.csv')['file name'].tolist()[2:]
+    model.eval()
+    has_next = True
+    count = 0
+    while has_next:
+        print(count)
+        images = []
+        for _ in range(3):
+            success, image = video_in.read()
+            if not success:
+                has_next = False
+                break
+            images.append(image)
+        if not has_next:
+            break
+        input_ = torch.cat([transform(torch.from_numpy(image)) for image in images], dim=0)
 
-    # fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    # video = cv2.VideoWriter(os.path.join(dirname, './videos/test.mp4'), fourcc, 30, (1280, 720))
-
-    # model.eval()
-    # for name, input_ in zip(image_names, dataset):
-    #     pred = model(input_[0].unsqueeze(0))
-    #     ball = model.detect_ball(pred)
-    #     image = cv2.imread(f'{path}/{name}')
-    #     if ball[0] == -1 or ball[1] == -1:
-    #         video.write(image)
-    #     else:
-    #         ball = (int(2.5*ball[0]), int(2.5*ball[1]))
-    #         image = cv2.circle(image, ball, 5, (0, 0, 255), -1)
-    #         video.write(image)
-    #     cv2.imshow('frame', image)
-    #     cv2.waitKey(1000)
-    # video.release()
-    # cv2.destroyAllWindows()
-    # exit()
+        predictions = model(input_.unsqueeze(0))
+        for raw_image, heatmap in zip(images, predictions):
+            ball = model.detect_ball(heatmap)
+            if ball[0] == -1 or ball[1] == -1:
+                video_out.write(raw_image)
+            else:
+                ball = (int(2.5*ball[0]), int(2.5*ball[1]))
+                image = cv2.circle(raw_image, ball, 4, (0, 0, 255), -1)
+                video_out.write(image)
+        count += 1
+    video_out.release()
+    cv2.destroyAllWindows()
+    exit()
 
     """Evaluating tuning models."""
     # dirname = os.path.dirname(__file__)
@@ -414,52 +430,52 @@ if __name__ == '__main__':
     #     print(test_scores)
 
     """Evaluating final model."""
-    dirname = os.path.dirname(__file__)
-    shape = (288, 512)
-    input_size = 3
-    output_size = 3
-    mode = ImageReadMode.RGB
-    channels = [32, 64, 128, 256]
-    mode_name = 'RGB'
+    # dirname = os.path.dirname(__file__)
+    # shape = (288, 512)
+    # input_size = 3
+    # output_size = 3
+    # mode = ImageReadMode.RGB
+    # channels = [32, 64, 128, 256]
+    # mode_name = 'RGB'
 
-    model_name = 'tracknet'
+    # model_name = 'tracknet'
 
-    data_dictionary = {
-        # 'game1': [f'Clip{i+1}' for i in range(13)],
-        # 'game2': [f'Clip{i+1}' for i in range(8)],
-        # 'game3': [f'Clip{i+1}' for i in range(9)],
-        # 'game4': [f'Clip{i+1}' for i in range(7)],
-        # 'game5': [f'Clip{i+1}' for i in range(15)],
-        # 'game6': [f'Clip{i+1}' for i in range(4)],
-        # 'game7': [f'Clip{i+1}' for i in range(9)],
-        'game8': [f'Clip{i+1}' for i in range(9)],
-        'game9': [f'Clip{i+1}' for i in range(9)],
-        'game10': [f'Clip{i+1}' for i in range(12)],
-    }
+    # data_dictionary = {
+    #     # 'game1': [f'Clip{i+1}' for i in range(13)],
+    #     # 'game2': [f'Clip{i+1}' for i in range(8)],
+    #     # 'game3': [f'Clip{i+1}' for i in range(9)],
+    #     # 'game4': [f'Clip{i+1}' for i in range(7)],
+    #     # 'game5': [f'Clip{i+1}' for i in range(15)],
+    #     # 'game6': [f'Clip{i+1}' for i in range(4)],
+    #     # 'game7': [f'Clip{i+1}' for i in range(9)],
+    #     'game8': [f'Clip{i+1}' for i in range(9)],
+    #     'game9': [f'Clip{i+1}' for i in range(9)],
+    #     'game10': [f'Clip{i+1}' for i in range(12)],
+    # }
 
-    datasets = []
-    for game, clips in data_dictionary.items():
-        for clip in clips:
-            data_path = os.path.join(dirname, f'./data/{game}/{clip}')
-            dataset = TrackNetDataset(
-                data_path,
-                shape=shape,
-                input_size=input_size,
-                output_size=output_size,
-                mode=mode
-            )
-            datasets.append(dataset)
-    test_set = torch.utils.data.ConcatDataset(datasets)
-    test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
+    # datasets = []
+    # for game, clips in data_dictionary.items():
+    #     for clip in clips:
+    #         data_path = os.path.join(dirname, f'./data/{game}/{clip}')
+    #         dataset = TrackNetDataset(
+    #             data_path,
+    #             shape=shape,
+    #             input_size=input_size,
+    #             output_size=output_size,
+    #             mode=mode
+    #         )
+    #         datasets.append(dataset)
+    # test_set = torch.utils.data.ConcatDataset(datasets)
+    # test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
 
-    model = TrackNet(3*input_size, output_size, channels=channels)
-    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
-    model.load_state_dict(torch.load(os.path.join(dirname, f'./weights/{model_name}.pt'), map_location=torch.device(device)))
-    model.to(device)
-    model.eval()
+    # model = TrackNet(3*input_size, output_size, channels=channels)
+    # device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    # model.load_state_dict(torch.load(os.path.join(dirname, f'./weights/{model_name}.pt'), map_location=torch.device(device)))
+    # model.to(device)
+    # model.eval()
 
-    test_statistics, test_scores = evaluate_tracknet(model, test_loader, device)
-    print(model_name)
-    print('Test Performance')
-    print(test_statistics)
-    print(test_scores)
+    # test_statistics, test_scores = evaluate_tracknet(model, test_loader, device)
+    # print(model_name)
+    # print('Test Performance')
+    # print(test_statistics)
+    # print(test_scores)
