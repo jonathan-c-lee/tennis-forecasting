@@ -30,6 +30,7 @@ class TrajectoryPredictor(nn.Module):
             lstm_layers (int): Number of layers in LSTM.
             dropout (float): LSTM dropout value.
         """
+        super().__init__()
         self._hidden_dim = hidden_dim
 
         self._player_fc = nn.Linear(4, position_dim)
@@ -89,6 +90,7 @@ class TrajectoryBaseline(nn.Module):
             lstm_layers (int): Number of layers in LSTM.
             dropout (float): LSTM dropout value.
         """
+        super().__init__()
         self._hidden_dim = hidden_dim
 
         self._lstm = nn.LSTM(

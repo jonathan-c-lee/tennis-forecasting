@@ -24,7 +24,8 @@ def train(
         epochs: int,
         model_name: str,
         model_dir: str,
-        config_dir: str):
+        config_dir: str,
+        save_all: bool = True):
     """
     Train model.
 
@@ -39,6 +40,7 @@ def train(
         model_name (str): Name of model for file names.
         model_dir (str): Name of directory to save model in.
         config_dir (str): Name of directory to save model configuration file in.
+        save_all (bool): Whether to save each intermediate model.
     """
     model.train()
     train_loss = []
@@ -58,11 +60,17 @@ def train(
             count += 1
         train_loss.append(running_loss / count)
 
-        torch.save(model.state_dict(), f'{model_dir}/{model_name}_{epoch+1}.pt')
-        with open(f'{config_dir}/{model_name}_{epoch+1}.yaml', 'w') as outfile:
-            config['epochs'] = epoch+1
-            config['train loss'] = train_loss
-            yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
+        if save_all:
+            torch.save(model.state_dict(), f'{model_dir}/{model_name}_{epoch+1}.pt')
+            with open(f'{config_dir}/{model_name}_{epoch+1}.yaml', 'w') as outfile:
+                config['epochs'] = epoch+1
+                config['train loss'] = train_loss
+                yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
+    torch.save(model.state_dict(), f'{model_dir}/{model_name}.pt')
+    with open(f'{config_dir}/{model_name}.yaml', 'w') as outfile:
+        config['epochs'] = epochs
+        config['train loss'] = train_loss
+        yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
 
 
 if __name__ == '__main__':
@@ -82,7 +90,7 @@ if __name__ == '__main__':
         for hidden_dim in hidden_dims:
             for layers in lstm_layers:
                 for drop in dropout:
-                    model_name = f'baseline_tuning_{input_length}in_{hidden_dim}hidden_{layers}layers_{drop}drop'
+                    model_name = f'baseline_tuning_{input_length}in_{hidden_dim}hidden_{layers}layers_{int(100*drop)}drop'
                     config = {
                         'name': model_name,
                         'frames_in': input_length,
@@ -124,7 +132,8 @@ if __name__ == '__main__':
                         epochs,
                         model_name,
                         os.path.join(dirname, f'./trained_models/trajectory'),
-                        os.path.join(dirname, f'./configs/trajectory')
+                        os.path.join(dirname, f'./configs/trajectory'),
+                        save_all=False
                     )
     
     """Training final tracknet model."""
