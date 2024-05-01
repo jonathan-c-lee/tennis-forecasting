@@ -97,6 +97,56 @@ class TrackNetDataset(Dataset):
         return images
 
 
+class BaselineTrajectoryPredictorDataset(Dataset):
+    """
+    Dataset for baseline trajectory prediction model.
+    
+    Assumes ball tracking annotations are in file called Label.csv with image names in column 0,
+    ball x-coordinate in column 2, and ball y-coordinate in column 3.
+    """
+    def __init__(
+            self,
+            path: str,
+            input_size: int = 4,
+            output_size: int = 12):
+        """
+        TrackNet dataset initializer.
+        
+        Args:
+            path (str): Absolute path to dataset.
+            input_size (int): Number of input images for model.
+            output_size (int): Number of outputs for model.
+        """
+        self._path = path
+        self._annotations = pd.read_csv(f'{path}/Label.csv').dropna()
+        self._image_shape = read_image(f'{self._path}/{self._annotations.iloc[0, 0]}').size()
+        self._input_size = input_size
+        self._output_size = output_size
+
+    def __len__(self):
+        """Dataset length."""
+        return len(self._annotations) - self._input_size - self._output_size + 1
+
+    def __getitem__(self, index: Union[int, torch.Tensor]):
+        """
+        Dataset indexer.
+
+        Args:
+            index (Union[int, torch.Tensor]): Index.
+        """
+        if torch.is_tensor(index): index = index.tolist()
+
+        centers = [
+            (float(self._annotations.iloc[index+i, 2]) / self._image_shape[2],
+             float(self._annotations.iloc[index+i, 3]) / self._image_shape[1])
+            for i in range(self._input_size + self._output_size)
+        ]
+
+        inputs = torch.stack([torch.tensor(centers[i]) for i in range(self._input_size)], dim=0)
+        outputs = torch.cat([torch.tensor(centers[i+self._input_size]) for i in range(self._output_size)], dim=0)
+        return inputs, outputs
+
+
 if __name__ == '__main__':
     # testing the TrackNetDataset class
     dirname = os.path.dirname(__file__)
