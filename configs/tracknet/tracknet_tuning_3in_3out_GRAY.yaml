@@ -10,7 +10,6 @@ optimizer: Adam
 learning rate: 0.002
 epochs: 30
 batch_size: 8
-weights_file: ../weights/tracknet_tuning_3in_3out_GRAY.pt
 train loss:
 - 0.0017863589059214614
 - 0.00010498120481802183

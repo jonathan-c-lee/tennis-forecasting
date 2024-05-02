@@ -15,7 +15,6 @@ optimizer: Adam
 learning rate: 0.001
 epochs: 30
 batch_size: 8
-weights_file: ../weights/tracknet.pt
 train loss:
 - 0.0005182246856892763
 - 5.166114432752266e-05

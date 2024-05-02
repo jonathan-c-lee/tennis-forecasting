@@ -1,5 +1,9 @@
 """Train script."""
 import os
+
+os.environ["OMP_NUM_THREADS"] = "30"
+os.environ["MKL_NUM_THREADS"] = "30"
+
 import yaml
 from tqdm import tqdm
 import torch
@@ -60,7 +64,7 @@ def train(
             count += 1
         train_loss.append(running_loss / count)
 
-        if save_all:
+        if save_all and (epoch+1) % 20 == 0:
             torch.save(model.state_dict(), f'{model_dir}/{model_name}_{epoch+1}.pt')
             with open(f'{config_dir}/{model_name}_{epoch+1}.yaml', 'w') as outfile:
                 config['epochs'] = epoch+1
@@ -75,66 +79,146 @@ def train(
 
 if __name__ == '__main__':
     """Training tuning trajectory prediction models."""
+    torch.set_num_threads(30)
+    torch.set_num_interop_threads(30)
     dirname = os.path.dirname(__file__)
-    input_frames = (4, 6, 8)
+    input_frames = 6
     output_frames = 15
-    hidden_dims = (64, 128, 256)
-    lstm_layers = (2, 3, 4, 5)
-    dropout = (0.0, 0.2, 0.4)
+    hidden_dim = 64
+    lstm_layers = 2
+    dropout = 0.0
 
-    lr = 2e-2
-    epochs = 400
-    batch_size = 64
+    lr = 2e-3
+    weight_decay = 1e-4
+    epochs = 1000
+    batch_size = 32
 
-    for input_length in input_frames:
-        for hidden_dim in hidden_dims:
-            for layers in lstm_layers:
-                for drop in dropout:
-                    model_name = f'baseline_tuning_{input_length}in_{hidden_dim}hidden_{layers}layers_{int(100*drop)}drop'
-                    config = {
-                        'name': model_name,
-                        'frames_in': input_length,
-                        'frames_out': output_frames,
-                        'layers': layers,
-                        'hidden_size': hidden_dim,
-                        'dropoout': drop,
-                        'loss': 'MSE loss',
-                        'optimizer': 'Adam',
-                        'learning rate': lr,
-                        'epochs': epochs,
-                        'batch_size': batch_size,
-                    }
+    model_name = f'baseline_trajectory_predictor'
+    config = {
+        'name': model_name,
+        'frames_in': input_frames,
+        'frames_out': output_frames,
+        'layers': lstm_layers,
+        'hidden_size': hidden_dim,
+        'dropout': dropout,
+        'loss': 'MSE loss',
+        'optimizer': 'Adam',
+        'learning rate': lr,
+        'weight decay': weight_decay,
+        'epochs': epochs,
+        'batch_size': batch_size,
+    }
 
-                    datasets = []
-                    for i in range(10):
-                        data_path = os.path.join(dirname, f'./local_data/game{i+1}/Clip1')
-                        dataset = BaselineTrajectoryPredictorDataset(
-                            data_path, input_length, output_frames
-                        )
-                        datasets.append(dataset)
-                    train_set = torch.utils.data.ConcatDataset(datasets)
-                    dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    data_dictionary = {
+        'game1': [f'Clip{i+1}' for i in range(13)],
+        'game2': [f'Clip{i+1}' for i in range(8)],
+        'game3': [f'Clip{i+1}' for i in range(9)],
+        'game4': [f'Clip{i+1}' for i in range(7)],
+        'game5': [f'Clip{i+1}' for i in range(15)],
+        'game6': [f'Clip{i+1}' for i in range(4)],
+        'game7': [f'Clip{i+1}' for i in range(9)],
+        # 'game8': [f'Clip{i+1}' for i in range(9)],
+        # 'game9': [f'Clip{i+1}' for i in range(9)],
+        # 'game10': [f'Clip{i+1}' for i in range(12)],
+    }
 
-                    model = TrajectoryBaseline(output_frames, hidden_dim, layers, drop)
-                    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
-                    model.to(device)
+    datasets = []
+    for game, clips in data_dictionary.items():
+        for clip in clips:
+            data_path = os.path.join(dirname, f'./data/{game}/{clip}')
+            dataset = BaselineTrajectoryPredictorDataset(
+                data_path, input_frames, output_frames
+            )
+            datasets.append(dataset)
+    train_set = torch.utils.data.ConcatDataset(datasets)
+    dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
 
-                    loss_criterion = nn.MSELoss()
-                    optimizer = Adam(model.parameters(), lr=lr)
+    model = TrajectoryBaseline(output_frames, hidden_dim, lstm_layers, dropout)
+    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    model.to(device)
 
-                    train(
-                        model,
-                        config,
-                        device,
-                        dataloader,
-                        optimizer,
-                        loss_criterion,
-                        epochs,
-                        model_name,
-                        os.path.join(dirname, f'./trained_models/trajectory'),
-                        os.path.join(dirname, f'./configs/trajectory'),
-                        save_all=False
-                    )
+    loss_criterion = nn.MSELoss()
+    optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay, amsgrad=True)
+
+    train(
+        model,
+        config,
+        device,
+        dataloader,
+        optimizer,
+        loss_criterion,
+        epochs,
+        model_name,
+        os.path.join(dirname, f'./trained_models/trajectory'),
+        os.path.join(dirname, f'./configs/trajectory'),
+        save_all=True
+    )
+
+    """Training tuning trajectory prediction models."""
+    # torch.set_num_threads(30)
+    # torch.set_num_interop_threads(30)
+    # dirname = os.path.dirname(__file__)
+    # input_frames = (4, 6, 8)
+    # output_frames = 15
+    # hidden_dims = (64, 128, 256)
+    # lstm_layers = (2, 3, 4, 5)
+    # dropout = (0.0, 0.2, 0.4)
+
+    # lr = 2e-3
+    # weight_decay = 1e-4
+    # epochs = 100
+    # batch_size = 32
+
+    # for input_length in input_frames:
+    #     for hidden_dim in hidden_dims:
+    #         for layers in lstm_layers:
+    #             for drop in dropout:
+    #                 model_name = f'baseline_tuning_{input_length}in_{hidden_dim}hidden_{layers}layers_{int(100*drop)}drop'
+    #                 config = {
+    #                     'name': model_name,
+    #                     'frames_in': input_length,
+    #                     'frames_out': output_frames,
+    #                     'layers': layers,
+    #                     'hidden_size': hidden_dim,
+    #                     'dropout': drop,
+    #                     'loss': 'MSE loss',
+    #                     'optimizer': 'Adam',
+    #                     'learning rate': lr,
+    #                     'weight decay': weight_decay,
+    #                     'epochs': epochs,
+    #                     'batch_size': batch_size,
+    #                 }
+
+    #                 datasets = []
+    #                 for i in range(10):
+    #                     data_path = os.path.join(dirname, f'./data/game{i+1}/Clip1')
+    #                     dataset = BaselineTrajectoryPredictorDataset(
+    #                         data_path, input_length, output_frames
+    #                     )
+    #                     datasets.append(dataset)
+    #                 train_set = torch.utils.data.ConcatDataset(datasets)
+    #                 dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+
+    #                 model = TrajectoryBaseline(output_frames, hidden_dim, layers, drop)
+    #                 device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    #                 model.to(device)
+
+    #                 loss_criterion = nn.MSELoss()
+    #                 optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay, amsgrad=True)
+
+    #                 train(
+    #                     model,
+    #                     config,
+    #                     device,
+    #                     dataloader,
+    #                     optimizer,
+    #                     loss_criterion,
+    #                     epochs,
+    #                     model_name,
+    #                     os.path.join(dirname, f'./trained_models/trajectory'),
+    #                     os.path.join(dirname, f'./configs/trajectory'),
+    #                     save_all=False
+    #                 )
     
     """Training final tracknet model."""
     # dirname = os.path.dirname(__file__)
