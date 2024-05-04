@@ -4,4 +4,10 @@ videos
 runs
 data/*
 !data/download.md
+configs/*
+!configs/download.md
+trained_models/*
+!trained_models/download.md
+player_data/*
+player_keypoints/*
 yolo*.pt
