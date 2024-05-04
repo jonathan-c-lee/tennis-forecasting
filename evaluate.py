@@ -4,13 +4,117 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision.io import ImageReadMode
 
-from dataloaders.datasets import TrackNetDataset, BaselineTrajectoryPredictorDataset
+from dataloaders.datasets import TrackNetDataset, BaselineTrajectoryPredictorDataset, TrajectoryPredictorDataset
 from models.tracknet import TrackNet
-from models.trajectory_predictor import TrajectoryBaseline
+from models.trajectory_predictor import TrajectoryBaseline, TrajectoryPredictor
 from metrics.evaluator import evaluate_tracknet
 
 
 if __name__ == '__main__':
+    """Evaluating tuning trajectory prediction models."""
+    torch.set_num_threads(30)
+    torch.set_num_interop_threads(30)
+    dirname = os.path.dirname(__file__)
+    input_frames = 6
+    output_frames = 15
+    position_dim = 4
+    pose_size = 68
+    pose_dims = (2, 16, 68)
+    hidden_dims = (128, 256)
+    lstm_layers = (2, 3, 4)
+    dropout = (0.0, 0.2)
+
+    train_list = []
+    test_list = []
+    for pose_length in pose_dims:
+        for hidden_dim in hidden_dims:
+            for layers in lstm_layers:
+                for drop in dropout:
+                    model_name = f'tuning_{pose_length}pose_{hidden_dim}hidden_{layers}layers_{int(100*drop)}drop'
+
+                    train_datasets = []
+                    for i in range(7):
+                        ball_path = os.path.join(dirname, f'./data/game{i+1}/Clip1')
+                        player_position_path = os.path.join(dirname, f'./player_data/game{i+1}_Clip1_player_positions.csv')
+                        player_pose_path = os.path.join(dirname, f'./player_keypoints/game{i+1}_Clip1_keypoints.csv')
+                        dataset = TrajectoryPredictorDataset(
+                            ball_path, player_position_path, player_pose_path, input_frames, output_frames
+                        )
+                        train_datasets.append(dataset)
+                    train_set = torch.utils.data.ConcatDataset(train_datasets)
+                    train_loader = DataLoader(train_set, batch_size=1, shuffle=False)
+
+                    test_datasets = []
+                    for i in range(7):
+                        ball_path = os.path.join(dirname, f'./data/game{i+1}/Clip2')
+                        player_position_path = os.path.join(dirname, f'./player_data/game{i+1}_Clip2_player_positions.csv')
+                        player_pose_path = os.path.join(dirname, f'./player_keypoints/game{i+1}_Clip2_keypoints.csv')
+                        dataset = TrajectoryPredictorDataset(
+                            ball_path, player_position_path, player_pose_path, input_frames, output_frames
+                        )
+                        test_datasets.append(dataset)
+                    test_set = torch.utils.data.ConcatDataset(test_datasets)
+                    test_loader = DataLoader(test_set, batch_size=1, shuffle=False)
+
+                    model = TrajectoryPredictor(
+                        output_frames,
+                        position_dim,
+                        pose_size,
+                        pose_length,
+                        hidden_dim,
+                        layers,
+                        drop
+                    )
+                    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+                    model.load_state_dict(
+                        torch.load(os.path.join(dirname, f'./trained_models/trajectory/{model_name}.pt'), map_location=torch.device(device))
+                    )
+                    model.to(device)
+                    model.eval()
+
+                    loss_criterion = torch.nn.MSELoss()
+
+                    running_loss = 0.0
+                    count = 0
+                    for inputs, labels in train_loader:
+                        ball_positions = inputs[0].to(device)
+                        player_positions = inputs[1].to(device)
+                        player_poses = inputs[2].to(device)
+                        labels = labels.to(device)
+
+                        outputs = model(ball_positions, player_positions, player_poses)
+                        loss = loss_criterion(outputs, labels)
+
+                        running_loss += loss.item()
+                        count += 1
+                    print(model_name)
+                    print('Train MSE:', running_loss / count)
+                    train_list.append((running_loss / count, model_name))
+
+                    running_loss = 0.0
+                    count = 0
+                    for inputs, labels in test_loader:
+                        ball_positions = inputs[0].to(device)
+                        player_positions = inputs[1].to(device)
+                        player_poses = inputs[2].to(device)
+                        labels = labels.to(device)
+
+                        outputs = model(ball_positions, player_positions, player_poses)
+                        loss = loss_criterion(outputs, labels)
+
+                        running_loss += loss.item()
+                        count += 1
+                    print('Test MSE:', running_loss / count)
+                    test_list.append((running_loss / count, model_name))
+    
+    train_list.sort(key = lambda x: x[0])
+    test_list.sort(key = lambda x: x[0])
+
+    print('Train')
+    print(train_list[:10])
+    print('Test')
+    print(test_list[:10])
+
     """Evaluating final trajectory prediction baseline."""
     # dirname = os.path.dirname(__file__)
     # input_frames = 6
@@ -71,7 +175,7 @@ if __name__ == '__main__':
     #     test_list.append(running_loss / count)
     # print(test_list)
 
-    """Evaluating tuning trajectory prediction models."""
+    """Evaluating tuning baseline trajectory prediction models."""
     # dirname = os.path.dirname(__file__)
     # input_frames = (4, 6, 8)
     # output_frames = 15

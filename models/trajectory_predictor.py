@@ -33,8 +33,16 @@ class TrajectoryPredictor(nn.Module):
         super().__init__()
         self._hidden_dim = hidden_dim
 
-        self._player_fc = nn.Linear(4, position_dim)
-        self._pose_fc = nn.Linear(2*pose_size, pose_dim)
+        self._player_fc = nn.Sequential(
+            nn.Linear(4, 4),
+            nn.ReLU(),
+            nn.Linear(4, position_dim)
+        )
+        self._pose_fc = nn.Sequential(
+            nn.Linear(pose_size, pose_size),
+            nn.ReLU(),
+            nn.Linear(pose_size, pose_dim)
+        )
         self._lstm = nn.LSTM(
             input_size=2+position_dim+pose_dim,
             hidden_size=hidden_dim,
@@ -45,6 +53,7 @@ class TrajectoryPredictor(nn.Module):
         self._output_fc = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
+            nn.BatchNorm1d(hidden_dim),
             nn.Linear(hidden_dim, 2*output_size)
         )
 
@@ -66,9 +75,9 @@ class TrajectoryPredictor(nn.Module):
         """
         players_positions = self._player_fc(players_positions)
         players_poses = self._pose_fc(players_poses)
-        input = torch.cat((ball_positions, players_positions, players_poses), dim=-1)
+        lstm_input = torch.cat((ball_positions, players_positions, players_poses), dim=-1)
 
-        lstm_out, _ = self._lstm(input)
+        lstm_out, _ = self._lstm(lstm_input)
         out = self._output_fc(lstm_out[:, -1, :])
         return out
 

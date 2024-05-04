@@ -108,7 +108,7 @@ class BaselineTrajectoryPredictorDataset(Dataset):
             self,
             path: str,
             input_size: int = 4,
-            output_size: int = 12):
+            output_size: int = 15):
         """
         TrackNet dataset initializer.
         
@@ -137,13 +137,155 @@ class BaselineTrajectoryPredictorDataset(Dataset):
         if torch.is_tensor(index): index = index.tolist()
 
         centers = [
-            (float(self._annotations.iloc[index+i, 2]) / self._image_shape[2],
-             float(self._annotations.iloc[index+i, 3]) / self._image_shape[1])
+            (
+                float(self._annotations.iloc[index+i, 2]) / self._image_shape[2],
+                float(self._annotations.iloc[index+i, 3]) / self._image_shape[1]
+            )
             for i in range(self._input_size + self._output_size)
         ]
 
         inputs = torch.stack([torch.tensor(centers[i]) for i in range(self._input_size)], dim=0)
         outputs = torch.cat([torch.tensor(centers[i+self._input_size]) for i in range(self._output_size)], dim=0)
+        return inputs, outputs
+
+
+class TrajectoryPredictorDataset(Dataset):
+    """
+    Dataset for trajectory prediction model.
+    
+    Assumes ball tracking annotations are in file called Label.csv with image names in column 0,
+    ball x-coordinate in column 2, and ball y-coordinate in column 3.
+    Assumes player position annotations are in a directory called player_data with csv files with
+    image names in column 0 and positions in subsequent columns.
+    Assumes player pose annotations are in a directory called player_keypoints with csv files with
+    image names in column 0 and positions in subsequent columns.
+    """
+    def __init__(
+            self,
+            ball_path: str,
+            player_position_path: str,
+            player_pose_path: str,
+            input_size: int = 4,
+            output_size: int = 15,
+            mirror: bool = False):
+        """
+        TrackNet dataset initializer.
+        
+        Args:
+            ball_path (str): Absolute path to ball position dataset.
+            player_position_path (str): Absolute path to player position dataset.
+            player_pose_path (str): Absolute path to player pose dataset.
+            input_size (int): Number of input images for model.
+            output_size (int): Number of outputs for model.
+            mirror (bool): Whether or not to left-right mirror datasets.
+        """
+        self._input_size = input_size
+        self._output_size = output_size
+
+        self._ball_annotations = pd.read_csv(f'{ball_path}/Label.csv').fillna(-1.0)
+
+        self._player_poses = pd.read_csv(player_pose_path).fillna(-1.0)
+        view = self._player_poses.loc[:, self._player_poses.columns != 'image_name']
+        self._player_poses.loc[:, self._player_poses.columns != 'image_name'] = view.mask(view < 1e-4, -1.0)
+
+        self._player_positions = pd.read_csv(player_position_path)
+        self._player_positions['player_x'] = (self._player_positions['x1'] + self._player_positions['x2']) / 2
+        self._player_positions['player_y'] = (self._player_positions['y1'] + self._player_positions['y2']) / 2
+        self._player_positions.drop(columns=['x1', 'y1', 'x2', 'y2'], inplace=True)
+        self._player_positions = self._player_positions.groupby('image_name').agg(
+            player1_x=pd.NamedAgg(column='player_x', aggfunc='first'),
+            player1_y=pd.NamedAgg(column='player_y', aggfunc='first'),
+            player2_x=pd.NamedAgg(column='player_x', aggfunc='last'),
+            player2_y=pd.NamedAgg(column='player_y', aggfunc='last')
+        ).reset_index()
+        self._player_positions['x_diff'] = (self._player_positions['player1_x'] - self._player_positions['player2_x'])
+        self._player_positions['x_diff'] = self._player_positions['x_diff'].abs()
+        self._player_positions['y_diff'] = (self._player_positions['player1_y'] - self._player_positions['player2_y'])
+        self._player_positions['y_diff'] = self._player_positions['y_diff'].abs()
+        self._player_positions['player2_x'].mask(self._player_positions['x_diff'] < 1.0, -1.0, inplace=True)
+        self._player_positions['player2_y'].mask(self._player_positions['y_diff'] < 1.0, -1.0, inplace=True)
+        self._player_positions.drop(columns=['x_diff', 'y_diff'], inplace=True)
+
+        shared_images = pd.merge(
+            left=self._ball_annotations['file name'],
+            right=self._player_poses['image_name'],
+            how='inner',
+            left_on='file name',
+            right_on='image_name'
+        ).merge(
+            self._player_positions,
+            how='inner',
+            left_on='file name',
+            right_on='image_name'
+        )['file name'].tolist()
+
+        self._ball_annotations = self._ball_annotations[self._ball_annotations['file name'].isin(shared_images)]
+        self._player_poses = self._player_poses[self._player_poses['image_name'].isin(shared_images)]
+        self._player_positions = self._player_positions[self._player_positions['image_name'].isin(shared_images)]
+
+        self._ball_annotations = self._ball_annotations.sort_values(by='file name').reset_index(drop=True)
+        self._player_poses = self._player_poses.sort_values(by='image_name').reset_index(drop=True)
+        self._player_positions = self._player_positions.sort_values(by='image_name').reset_index(drop=True)
+
+        self._image_shape = read_image(f'{ball_path}/{self._ball_annotations.iloc[0, 0]}').size()
+        width, height = self._image_shape[2], self._image_shape[1]
+
+        self._ball_annotations.iloc[:, 2] /= width
+        self._ball_annotations.iloc[:, 3] /= height
+        self._player_poses.iloc[:, 1::2] /= width
+        self._player_poses.iloc[:, 2::2] /= height
+        self._player_positions.iloc[:, [1, 3]] /= width
+        self._player_positions.iloc[:, [2, 4]] /= height
+
+        view = self._ball_annotations.iloc[:, [2, 3]]
+        self._ball_annotations.iloc[:, [2, 3]] = view.mask(view <= 0.0, -1.0)
+        view = self._player_poses.iloc[:, 1:]
+        self._player_poses.iloc[:, 1:] = view.mask(view <= 0.0, -1.0)
+        view = self._player_positions.iloc[:, 1:]
+        self._player_positions.iloc[:, 1:] = view.mask(view <= 0.0, -1.0)
+
+        if mirror:
+            self._ball_annotations.iloc[:, 2] += 2 * (0.5 - self._ball_annotations.iloc[:, 2])
+            self._player_poses.iloc[:, 1::2] += 2 * (0.5 - self._player_poses.iloc[:, 1::2])
+            self._player_positions.iloc[:, 1::2] += 2 * (0.5 - self._player_positions.iloc[:, 1::2])
+
+            view = self._ball_annotations.iloc[:, 2]
+            self._ball_annotations.iloc[:, 2] = view.mask(view > 1.5, -1.0)
+            view = self._player_poses.iloc[:, 1::2]
+            self._player_poses.iloc[:, 1::2] = view.mask(view > 1.5, -1.0)
+            view = self._player_positions.iloc[:, 1::2]
+            self._player_positions.iloc[:, 1::2] = view.mask(view > 1.5, -1.0)
+
+    def __len__(self):
+        """Dataset length."""
+        return len(self._ball_annotations) - self._input_size - self._output_size + 1
+
+    def __getitem__(self, index: Union[int, torch.Tensor]):
+        """
+        Dataset indexer.
+
+        Args:
+            index (Union[int, torch.Tensor]): Index.
+        """
+        if torch.is_tensor(index): index = index.tolist()
+
+        ball_positions = torch.tensor([
+            [float(self._ball_annotations.iloc[index+i, j+2]) for j in range(2)]
+            for i in range(self._input_size + self._output_size)
+        ])
+
+        player_poses = torch.tensor([
+            [float(self._player_poses.iloc[index+i, j+1]) for j in range(68)]
+            for i in range(self._input_size)
+        ])
+
+        player_positions = torch.tensor([
+            [float(self._player_positions.iloc[index+i, j+1]) for j in range(4)]
+            for i in range(self._input_size)
+        ])
+
+        inputs = (ball_positions[:self._input_size], player_positions, player_poses)
+        outputs = ball_positions[self._input_size:].view(-1)
         return inputs, outputs
 
 
