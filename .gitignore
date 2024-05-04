@@ -2,12 +2,12 @@ __pycache__/
 .venv
 videos
 runs
-data/*
+data/**
 !data/download.md
-configs/*
+configs/**
 !configs/download.md
-trained_models/*
+trained_models/**
 !trained_models/download.md
-player_data/*
-player_keypoints/*
+player_data/**
+player_keypoints/**
 yolo*.pt
