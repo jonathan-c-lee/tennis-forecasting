@@ -496,102 +496,102 @@ if __name__ == '__main__':
     #                     yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
 
     """Training final baseline trajectory prediction model."""
-    torch.set_num_threads(30)
-    torch.set_num_interop_threads(30)
-    dirname = os.path.dirname(__file__)
-    input_frames = 6
-    output_frames = 15
-    hidden_dim = 64
-    lstm_layers = 2
-    dropout = 0.0
+    # torch.set_num_threads(30)
+    # torch.set_num_interop_threads(30)
+    # dirname = os.path.dirname(__file__)
+    # input_frames = 6
+    # output_frames = 15
+    # hidden_dim = 64
+    # lstm_layers = 2
+    # dropout = 0.0
 
-    lr = 1e-3
-    weight_decay = 1e-4
-    epochs = 400
-    batch_size = 32
+    # lr = 1e-3
+    # weight_decay = 1e-4
+    # epochs = 400
+    # batch_size = 64
 
-    model_name = f'baseline_trajectory_predictor'
-    config = {
-        'name': model_name,
-        'frames_in': input_frames,
-        'frames_out': output_frames,
-        'layers': lstm_layers,
-        'hidden_size': hidden_dim,
-        'dropout': dropout,
-        'loss': 'MSE loss',
-        'optimizer': 'Adam',
-        'learning rate': lr,
-        'weight decay': weight_decay,
-        'epochs': epochs,
-        'batch_size': batch_size,
-    }
+    # model_name = f'baseline_trajectory_predictor'
+    # config = {
+    #     'name': model_name,
+    #     'frames_in': input_frames,
+    #     'frames_out': output_frames,
+    #     'layers': lstm_layers,
+    #     'hidden_size': hidden_dim,
+    #     'dropout': dropout,
+    #     'loss': 'MSE loss',
+    #     'optimizer': 'Adam',
+    #     'learning rate': lr,
+    #     'weight decay': weight_decay,
+    #     'epochs': epochs,
+    #     'batch_size': batch_size,
+    # }
 
-    data_dictionary = {
-        'game1': [f'Clip{i+1}' for i in range(13)],
-        'game2': [f'Clip{i+1}' for i in range(8)],
-        'game3': [f'Clip{i+1}' for i in range(9)],
-        'game4': [f'Clip{i+1}' for i in range(7)],
-        'game5': [f'Clip{i+1}' for i in range(15)],
-        'game6': [f'Clip{i+1}' for i in range(4)],
-        'game7': [f'Clip{i+1}' for i in range(9)],
-        # 'game8': [f'Clip{i+1}' for i in range(9)],
-        # 'game9': [f'Clip{i+1}' for i in range(9)],
-        # 'game10': [f'Clip{i+1}' for i in range(12)],
-    }
+    # data_dictionary = {
+    #     'game1': [f'Clip{i+1}' for i in range(13)],
+    #     'game2': [f'Clip{i+1}' for i in range(8)],
+    #     'game3': [f'Clip{i+1}' for i in range(9)],
+    #     'game4': [f'Clip{i+1}' for i in range(7)],
+    #     'game5': [f'Clip{i+1}' for i in range(15)],
+    #     'game6': [f'Clip{i+1}' for i in range(4)],
+    #     'game7': [f'Clip{i+1}' for i in range(9)],
+    #     # 'game8': [f'Clip{i+1}' for i in range(9)],
+    #     # 'game9': [f'Clip{i+1}' for i in range(9)],
+    #     # 'game10': [f'Clip{i+1}' for i in range(12)],
+    # }
 
-    datasets = []
-    for game, clips in data_dictionary.items():
-        for clip in clips:
-            ball_path = os.path.join(dirname, f'./data/{game}/{clip}')
-            dataset = BaselineTrajectoryPredictorDataset(
-                ball_path, input_frames, output_frames
-            )
-            datasets.append(dataset)
-            mirror_dataset = BaselineTrajectoryPredictorDataset(
-                ball_path, input_frames, output_frames, mirror=True
-            )
-            datasets.append(mirror_dataset)
-    train_set = torch.utils.data.ConcatDataset(datasets)
-    dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
+    # datasets = []
+    # for game, clips in data_dictionary.items():
+    #     for clip in clips:
+    #         ball_path = os.path.join(dirname, f'./data/{game}/{clip}')
+    #         dataset = BaselineTrajectoryPredictorDataset(
+    #             ball_path, input_frames, output_frames
+    #         )
+    #         datasets.append(dataset)
+    #         mirror_dataset = BaselineTrajectoryPredictorDataset(
+    #             ball_path, input_frames, output_frames, mirror=True
+    #         )
+    #         datasets.append(mirror_dataset)
+    # train_set = torch.utils.data.ConcatDataset(datasets)
+    # dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
 
-    model = TrajectoryBaseline(output_frames, hidden_dim, lstm_layers, dropout)
-    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
-    model.to(device)
+    # model = TrajectoryBaseline(output_frames, hidden_dim, lstm_layers, dropout)
+    # device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    # model.to(device)
 
-    loss_criterion = nn.MSELoss()
-    optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay, amsgrad=True)
+    # loss_criterion = nn.MSELoss()
+    # optimizer = Adam(model.parameters(), lr=lr, weight_decay=weight_decay, amsgrad=True)
 
-    model.train()
-    train_loss = []
-    for epoch in tqdm(range(epochs)):
-        running_loss = 0.0
-        count = 0
-        for inputs, labels in dataloader:
-            ball_positions = inputs.to(device)
-            labels = labels.to(device)
+    # model.train()
+    # train_loss = []
+    # for epoch in tqdm(range(epochs)):
+    #     running_loss = 0.0
+    #     count = 0
+    #     for inputs, labels in dataloader:
+    #         ball_positions = inputs.to(device)
+    #         labels = labels.to(device)
 
-            optimizer.zero_grad()
-            outputs = model(ball_positions)
-            loss = loss_criterion(outputs, labels)
-            loss.backward()
-            nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-            optimizer.step()
+    #         optimizer.zero_grad()
+    #         outputs = model(ball_positions)
+    #         loss = loss_criterion(outputs, labels)
+    #         loss.backward()
+    #         nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+    #         optimizer.step()
 
-            running_loss += loss.item()
-            count += 1
-        train_loss.append(running_loss / count)
-        if (epoch+1) % 20 == 0:
-            torch.save(model.state_dict(), f'./trained_models/baseline_trajectory/{model_name}_{epoch+1}.pt')
-            with open(f'./configs/baseline_trajectory/{model_name}_{epoch+1}.yaml', 'w') as outfile:
-                config['epochs'] = epoch+1
-                config['train loss'] = train_loss
-                yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
-        print(train_loss[-1])
-    torch.save(model.state_dict(), f'./trained_models/baseline_trajectory/{model_name}.pt')
-    with open(f'./configs/baseline_trajectory/{model_name}.yaml', 'w') as outfile:
-        config['epochs'] = epochs
-        config['train loss'] = train_loss
-        yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
+    #         running_loss += loss.item()
+    #         count += 1
+    #     train_loss.append(running_loss / count)
+    #     if (epoch+1) % 20 == 0:
+    #         torch.save(model.state_dict(), f'./trained_models/baseline_trajectory/{model_name}_{epoch+1}.pt')
+    #         with open(f'./configs/baseline_trajectory/{model_name}_{epoch+1}.yaml', 'w') as outfile:
+    #             config['epochs'] = epoch+1
+    #             config['train loss'] = train_loss
+    #             yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
+    #     print(train_loss[-1])
+    # torch.save(model.state_dict(), f'./trained_models/baseline_trajectory/{model_name}.pt')
+    # with open(f'./configs/baseline_trajectory/{model_name}.yaml', 'w') as outfile:
+    #     config['epochs'] = epochs
+    #     config['train loss'] = train_loss
+    #     yaml.dump(config, outfile, default_flow_style=False, sort_keys=False)
 
     """Training tuning baseline trajectory prediction models."""
     # torch.set_num_threads(30)

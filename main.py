@@ -75,62 +75,62 @@ if __name__ == '__main__':
                 ball = (int(2.5*ball[0]), int(2.5*ball[1]))
                 ball_positions.append(ball)
 
-    for i in tqdm(range(len(ball_positions))):
-        image = raw_images[i]
-        ball = ball_positions[i]
-        if ball[0] < 0 or ball[1] < 0:
-            video_out.write(image)
-            continue
-        image = cv2.circle(image, ball, 4, (0, 0, 255), -1)
-        video_out.write(image)
-    video_out.release()
-    cv2.destroyAllWindows()
-    exit()
-
-    # # load trajectory predictor
-    # model_name = 'baseline_trajectory_predictor'
-    # config = None
-    # with open(os.path.join(dirname, f'./configs/trajectory/{model_name}.yaml'), 'r') as file:
-    #     config = yaml.full_load(file)
-    # input_frames, output_frames = config['frames_in'], config['frames_out']
-    # hidden_dim = config['hidden_size']
-    # lstm_layers = config['layers']
-    # dropout = config['dropout']
-    # model = TrajectoryBaseline(output_frames, hidden_dim, lstm_layers, dropout)
-    # device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
-    # model.load_state_dict(
-    #     torch.load(os.path.join(dirname, f'./trained_models/trajectory/{model_name}.pt'), map_location=torch.device(device))
-    # )
-    # model.to(device)
-    # model.eval()
-
-    # normal_ball = [(float(ball[0]) / 1280, float(ball[1]) / 720) for ball in ball_positions]
-    # predictions = []
-    # for i in tqdm(range(len(normal_ball))):
+    # for i in tqdm(range(len(ball_positions))):
     #     image = raw_images[i]
-    #     inputs = normal_ball[max(0, i+1-input_frames):i+1]
-    #     inputs = [ball for ball in inputs if ball[0] >= 0 and ball[1] >= 0]
-    #     if len(inputs) == 0 or len(inputs) != input_frames:
+    #     ball = ball_positions[i]
+    #     if ball[0] < 0 or ball[1] < 0:
     #         video_out.write(image)
     #         continue
-    #     inputs = torch.stack([torch.tensor(ball) for ball in inputs], dim=0).to(device)
-    #     inputs = torch.unsqueeze(inputs, 0).to(device)
-    #     outputs = torch.squeeze(model(inputs), 0)
-    #     for ball in torch.squeeze(inputs, 0):
-    #         ball = (int(1280*ball[0]), int(720*ball[1]))
-    #         image = cv2.circle(image, ball, 4, (0, 0, 255), -1)
-    #     if ball_positions[i][0] != -1 and ball_positions[i][1] != -1:
-    #         image = cv2.circle(image, ball_positions[i], 4, (255, 0, 255), -1)
-    #     for j in range(0, len(outputs), 2):
-    #         ball = (int(1280*outputs[j]), int(720*outputs[j+1]))
-    #         image = cv2.circle(image, ball, 4, (255, 0, 0), -1)
-    #     reals = normal_ball[i+1:min(len(normal_ball), i+1+output_frames)]
-    #     for ball in reals:
-    #         if ball[0] >= 0 and ball[1] >= 0:
-    #             ball = (int(1280*ball[0]), int(720*ball[1]))
-    #             image = cv2.circle(image, ball, 4, (0, 255, 0), -1)
+    #     image = cv2.circle(image, ball, 4, (0, 0, 255), -1)
     #     video_out.write(image)
     # video_out.release()
     # cv2.destroyAllWindows()
     # exit()
+
+    # load trajectory predictor
+    model_name = 'baseline_trajectory_predictor'
+    config = None
+    with open(os.path.join(dirname, f'./configs/baseline_trajectory/{model_name}.yaml'), 'r') as file:
+        config = yaml.full_load(file)
+    input_frames, output_frames = config['frames_in'], config['frames_out']
+    hidden_dim = config['hidden_size']
+    lstm_layers = config['layers']
+    dropout = config['dropout']
+    model = TrajectoryBaseline(output_frames, hidden_dim, lstm_layers, dropout)
+    device = torch.device('cuda:2' if torch.cuda.is_available() else 'cpu')
+    model.load_state_dict(
+        torch.load(os.path.join(dirname, f'./trained_models/baseline_trajectory/{model_name}.pt'), map_location=torch.device(device))
+    )
+    model.to(device)
+    model.eval()
+
+    normal_ball = [(float(ball[0]) / 1280, float(ball[1]) / 720) for ball in ball_positions]
+    predictions = []
+    for i in tqdm(range(len(normal_ball))):
+        image = raw_images[i]
+        inputs = normal_ball[max(0, i+1-input_frames):i+1]
+        inputs = [ball for ball in inputs if ball[0] >= 0 and ball[1] >= 0]
+        if len(inputs) == 0 or len(inputs) != input_frames:
+            video_out.write(image)
+            continue
+        inputs = torch.stack([torch.tensor(ball) for ball in inputs], dim=0).to(device)
+        inputs = torch.unsqueeze(inputs, 0).to(device)
+        outputs = torch.squeeze(model(inputs), 0)
+        for ball in torch.squeeze(inputs, 0):
+            ball = (int(1280*ball[0]), int(720*ball[1]))
+            image = cv2.circle(image, ball, 4, (0, 0, 255), -1)
+        if ball_positions[i][0] != -1 and ball_positions[i][1] != -1:
+            image = cv2.circle(image, ball_positions[i], 4, (255, 0, 255), -1)
+        for j in range(0, len(outputs), 2):
+            ball = (int(1280*outputs[j]), int(720*outputs[j+1]))
+            image = cv2.circle(image, ball, 4, (255, 0, 0), -1)
+        reals = normal_ball[i+1:min(len(normal_ball), i+1+output_frames)]
+        for ball in reals:
+            if ball[0] >= 0 and ball[1] >= 0:
+                ball = (int(1280*ball[0]), int(720*ball[1]))
+                image = cv2.circle(image, ball, 4, (0, 255, 0), -1)
+        video_out.write(image)
+    video_out.release()
+    cv2.destroyAllWindows()
+    exit()
 
