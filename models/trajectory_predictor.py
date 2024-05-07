@@ -82,6 +82,66 @@ class TrajectoryPredictor(nn.Module):
         return out
 
 
+class PositionTrajectoryPredictor(nn.Module):
+    """Ball trajectory prediction model from https://www.mdpi.com/2313-433X/9/5/99 using only position data."""
+    def __init__(
+            self,
+            output_size: int,
+            position_dim: int,
+            hidden_dim: int,
+            lstm_layers: int,
+            dropout: float):
+        """
+        TrajectoryPredictor initializer.
+
+        Args:
+            output_size (int): Number of output frames.
+            position_dim (int): Number of dimensions that players' positions are mapped to.
+            hidden_dim (int): Number of features in LSTM hidden state.
+            lstm_layers (int): Number of layers in LSTM.
+            dropout (float): LSTM dropout value.
+        """
+        super().__init__()
+        self._hidden_dim = hidden_dim
+
+        self._player_fc = nn.Sequential(
+            nn.Linear(4, 4),
+            nn.ReLU(),
+            nn.Linear(4, position_dim)
+        )
+        self._lstm = nn.LSTM(
+            input_size=2+position_dim,
+            hidden_size=hidden_dim,
+            num_layers=lstm_layers,
+            dropout=dropout,
+            batch_first=True
+        )
+        self._output_fc = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.BatchNorm1d(hidden_dim),
+            nn.Linear(hidden_dim, 2*output_size)
+        )
+
+    def forward(self, ball_positions: torch.Tensor, players_positions: torch.Tensor):
+        """
+        Ball trajectory prediction model forward pass.
+
+        Args:
+            ball_positions (torch.Tensor): Sequence of ball positions.
+            players_positions (torch.Tensor): Sequence of players' positions.
+        
+        Returns:
+            Future ball positions.
+        """
+        players_positions = self._player_fc(players_positions)
+        lstm_input = torch.cat((ball_positions, players_positions), dim=-1)
+
+        lstm_out, _ = self._lstm(lstm_input)
+        out = self._output_fc(lstm_out[:, -1, :])
+        return out
+
+
 class TrajectoryBaseline(nn.Module):
     """Baseline ball trajectory prediction model using only ball position."""
     def __init__(
@@ -112,6 +172,7 @@ class TrajectoryBaseline(nn.Module):
         self._fc = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
+            nn.BatchNorm1d(hidden_dim),
             nn.Linear(hidden_dim, 2*output_size)
         )
     
